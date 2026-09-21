@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>音符当てクイズ</title>
+  <style>
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      text-align: center;
+      background-color: #f4f7f6;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      color: #2c3e50;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      font-size: 1rem;
+      font-weight: bold;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover { background-color: #2980b9; }
+    .btn-home {
+      background-color:#2980b9;
+      font-size: 0.9rem;
+      padding: 8px 12px;
+      width: auto;
+      margin: 0 0 15px 0;
+    }
+    .btn-home:hover { background-color: #95a5a6; }
+    .answer-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .btn-note {
+      padding: 15px 5px;
+      font-size: 1.1rem;
+      background-color: #168f44;;
+    }
+    .btn-note:hover { background-color: #509a6b; }
+    #image-container img {
+      max-width: 100%;
+      height: 220px;
+      object-fit: contain;
+      margin: 15px 0;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      background-color: #ffffff;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .progress {
+      font-weight: bold;
+      color: #7f8c8d;
+      margin-bottom: 10px;
+    }
+    .hidden { display: none; }
+    #result-msg {
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin: 15px 0;
+      height: 30px;
+    }
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- モード選択画面 -->
+    <div id="mode-select">
+      <h1>音符当てクイズ</h1>
+      <p>モードを選んでスタート！</p>
+      <button class="btn" onclick="startQuiz('treble-seq')">ト音記号（順番 / 13問）</button>
+      <button class="btn" onclick="startQuiz('treble-rand')">ト音記号（ランダム / 10問）</button>
+      <button class="btn" onclick="startQuiz('bass-seq')">ヘ音記号（順番 / 13問）</button>
+      <button class="btn" onclick="startQuiz('bass-rand')">ヘ音記号（ランダム / 10問）</button>
+      <button class="btn" onclick="startQuiz('all-rand')">すべて（ランダム / 10問）</button>
+    </div>
+
+    <!-- クイズ画面 -->
+    <div id="quiz-area" class="hidden">
+      <div class="header-bar">
+        <button class="btn btn-home" onclick="resetQuiz()">ホームにもどる</button>
+        <div class="progress" id="progress">第 1 / 13 問</div>
+      </div>
+      <div id="image-container"></div>
+      <div id="result-msg"></div>
+
+      <div class="answer-grid">
+        <button class="btn btn-note" onclick="checkAnswer('ド')">ド</button>
+        <button class="btn btn-note" onclick="checkAnswer('レ')">レ</button>
+        <button class="btn btn-note" onclick="checkAnswer('ミ')">ミ</button>
+        <button class="btn btn-note" onclick="checkAnswer('ファ')">ファ</button>
+        <button class="btn btn-note" onclick="checkAnswer('ソ')">ソ</button>
+        <button class="btn btn-note" onclick="checkAnswer('ラ')">ラ</button>
+        <button class="btn btn-note" onclick="checkAnswer('シ')">シ</button>
+      </div>
+    </div>
+
+    <!-- 結果画面 -->
+    <div id="result-area" class="hidden">
+      <h1>結果発表</h1>
+      <p id="score-text" style="font-size: 1.5rem; font-weight: bold;"></p>
+      <button class="btn" onclick="resetQuiz()">もう一度あそぶ</button>
+    </div>
+  </div>
+
+ <script>
+  const TREBLE_NOTES = [
+    { name: 'ド', key: 'C' }, { name: 'レ', key: 'D' }, { name: 'ミ', key: 'E' },
+    { name: 'ファ', key: 'F' }, { name: 'ソ', key: 'G' }, { name: 'ラ', key: 'A' },
+    { name: 'シ', key: 'B' }, { name: 'ド', key: 'C2' }, { name: 'レ', key: 'D2' },
+    { name: 'ミ', key: 'E2' }, { name: 'ファ', key: 'F2' }, { name: 'ソ', key: 'G2' },
+    { name: 'ラ', key: 'A2' }
+  ];
+
+  const BASS_NOTES = [
+    { name: 'ミ', key: 'E' }, { name: 'ファ', key: 'F' }, { name: 'ソ', key: 'G' },
+    { name: 'ラ', key: 'A' }, { name: 'シ', key: 'B' }, { name: 'ド', key: 'C' },
+    { name: 'レ', key: 'D' }, { name: 'ミ', key: 'E2' }, { name: 'ファ', key: 'F2' },
+    { name: 'ソ', key: 'G2' }, { name: 'ラ', key: 'A2' }, { name: 'シ', key: 'B2' },
+    { name: 'ド', key: 'C2' }
+  ];
+
+  // 音声ファイルの読み込み
+  const soundCorrect = new Audio('./correct.mp3');
+  const soundIncorrect = new Audio('./incorrect.mp3');
+
+  let currentQuestions = [];
+  let currentStep = 0;
+  let score = 0;
+
+  // ★ スマホの音声制限を解除する関数 ★
+  function unlockAudio() {
+    [soundCorrect, soundIncorrect].forEach(sound => {
+      sound.play().then(() => {
+        sound.pause();
+        sound.currentTime = 0;
+      }).catch(e => console.log("Audio unlock path:", e));
+    });
+  }
+
+  function startQuiz(mode) {
+    // 最初のボタンタップでスマホの音声ブロックを解除する
+    unlockAudio();
+
+    currentQuestions = generateQuestions(mode);
+    currentStep = 0;
+    score = 0;
+    document.getElementById('mode-select').classList.add('hidden');
+    document.getElementById('result-area').classList.add('hidden');
+    document.getElementById('quiz-area').classList.remove('hidden');
+    showQuestion();
+  }
+
+  function generateQuestions(mode) {
+    let list = [];
+    if (mode === 'treble-seq') {
+      list = TREBLE_NOTES.slice(0, 13).map(n => ({ ...n, clef: 'treble' }));
+    } else if (mode === 'bass-seq') {
+      list = BASS_NOTES.slice(0, 13).map(n => ({ ...n, clef: 'bass' }));
+    } else if (mode === 'treble-rand') {
+      for (let i = 0; i < 10; i++) {
+        list.push({ ...TREBLE_NOTES[Math.floor(Math.random() * TREBLE_NOTES.length)], clef: 'treble' });
+      }
+    } else if (mode === 'bass-rand') {
+      for (let i = 0; i < 10; i++) {
+        list.push({ ...BASS_NOTES[Math.floor(Math.random() * BASS_NOTES.length)], clef: 'bass' });
+      }
+    } else if (mode === 'all-rand') {
+      for (let i = 0; i < 10; i++) {
+        const isTreble = Math.random() < 0.5;
+        const notes = isTreble ? TREBLE_NOTES : BASS_NOTES;
+        list.push({ ...notes[Math.floor(Math.random() * notes.length)], clef: isTreble ? 'treble' : 'bass' });
+      }
+    }
+    return list;
+  }
+
+  function showQuestion() {
+    document.getElementById('result-msg').innerText = '';
+    document.getElementById('progress').innerText = `第 ${currentStep + 1} / ${currentQuestions.length} 問`;
+    const q = currentQuestions[currentStep];
+    const imgPath = `./${q.clef}_${q.key}.png`;
+    document.getElementById('image-container').innerHTML = `<img src="${imgPath}" alt="音符">`;
+  }
+
+  function checkAnswer(selectedName) {
+    const q = currentQuestions[currentStep];
+    const msgEl = document.getElementById('result-msg');
+
+    if (selectedName === q.name) {
+      score++;
+      msgEl.style.color = '#2ecc71';
+      msgEl.innerText = '⭕ 正解！';
+
+      // ★ スマホ対策：タップ直後に同期処理で再生
+      soundCorrect.currentTime = 0;
+      soundCorrect.play().catch(e => console.log(e));
+    } else {
+      msgEl.style.color = '#e74c3c';
+      msgEl.innerText = `❌ 不正解... (正解: ${q.name})`;
+
+      // ★ スマホ対策：タップ直後に同期処理で再生
+      soundIncorrect.currentTime = 0;
+      soundIncorrect.play().catch(e => console.log(e));
+    }
+
+    setTimeout(() => {
+      currentStep++;
+      if (currentStep < currentQuestions.length) {
+        showQuestion();
+      } else {
+        finishQuiz();
+      }
+    }, 1000);
+  }
+
+  function finishQuiz() {
+    document.getElementById('quiz-area').classList.add('hidden');
+    document.getElementById('result-area').classList.remove('hidden');
+    document.getElementById('score-text').innerText = `${currentQuestions.length}問中 ${score} 問 正解！`;
+  }
+
+  function resetQuiz() {
+    document.getElementById('quiz-area').classList.add('hidden');
+    document.getElementById('result-area').classList.add('hidden');
+    document.getElementById('mode-select').classList.remove('hidden');
+  }
+</script>
+</body>
+</html>
